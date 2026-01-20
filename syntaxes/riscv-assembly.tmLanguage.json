@@ -1,0 +1,40 @@
+{
+  "scopeName": "source.riscv",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#directives"
+    },
+    {
+      "include": "#instructions"
+    },
+    {
+      "include": "#registers"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#labels"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.character.riscv",
+          "match": "(#|//).*"
+        },
+        {
+          "name": "comment.block.riscv",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+
+      ]
+    }
+
+  }
+}
