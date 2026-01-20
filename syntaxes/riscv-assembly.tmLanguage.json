@@ -2,6 +2,9 @@
   "scopeName": "source.riscv",
   "patterns": [
     {
+      "include": "#preprocess"
+    },
+    {
       "include": "#comments"
     },
     {
@@ -34,7 +37,47 @@
         }
 
       ]
+    },
+    "preprocess": {
+      "patterns": [
+        {
+          "match": "^\\s*(#)\\s*(include)\\s+(\"[^\"]*\")",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.preprocessor.riscvj"
+            },
+            "2": {
+              "name": "keyword.control.directive.include.cmeta.preprocessor.include.riscv"
+            },
+            "3": {
+              "name": "string.quoted.include.riscv"
+            }
+          }
+        },
+        {
+          "match": "^\\s*(#)\\s*([a-z]+)",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.preprocessor.riscv"
+            },
+            "2": {
+              "name": "keyword.control.preprocessor.riscv"
+            }
+          }
+        }
+      ]
+    },
+
+
+    "directives": {
+      "patterns": [
+        {
+          "name": "storage.type.directive.riscv",
+          "match": "\\.([a-zA-Z_][a-zA-Z0-9_]*)"
+        }
+      ]
     }
+
 
   }
 }
