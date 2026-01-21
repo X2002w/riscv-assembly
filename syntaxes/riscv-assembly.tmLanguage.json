@@ -62,7 +62,7 @@
           }
         },
         {
-          "match": "^\\s*(#)\\s*([a-z]+)(.*)",
+          "match": "^\\s*(#)\\s*(define)(\\s+)([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)(.+)",
           "captures": {
             "1": {
               "name": "punctuation.definition.preprocessor.riscv"
@@ -70,11 +70,29 @@
             "2": {
               "name": "keyword.control.directive.riscv"
             },
-            "3": {
+            "4": {
               "name": "entity.name.function.preprocessor"
+            },
+            "6": {
+              "name": "variable.parameter.preprocessor"
+            },
+            "7": {
+              "name": "string.unquoted.preprocessor"
+            }
+          }
+        },
+        {
+          "match": "^\\s*(#)\\s*(ifdef|ifndef|else|endif|undef)",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.preprocessor.riscv"
+            },
+            "2": {
+              "name": "keyword.control.directive.riscv"
             }
           }
         }
+       
       ]
     },
 
