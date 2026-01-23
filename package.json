@@ -11,12 +11,42 @@
     "Snippets"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onLanguage:s",
+    "onLanguage:S"
   ],
 
 
   "main": "./out/extension.js",
+
   "contributes":{
+
+    "configuration": {
+      "title": "assembly registers view",
+      "properties": {
+        "asmRegisterViewer.showHistory": {
+          "type": "boolean",
+          "default": true,
+          "description": "是否在寄存器视图中显示历史记录"
+        },
+        "asmRegisterViewer.autoReset": {
+          "type": "boolean",
+          "default": true,
+          "description": "是否在切换文件时自动重置寄存器视图"
+        }
+      }
+    },
+
+    "commands": [
+      {
+        "command": "asmRegisterViewer.showRegisters",
+        "title": "Show RISC-V Registers"
+      },
+      {
+        "command": "asmRegisterViewer.reset",
+        "title": "Reset RISC-V Registers"
+      }
+
+    ],
 
     "languages":[
       {
@@ -40,7 +70,25 @@
         "scopeName": "source.riscv",
         "path": "./syntaxes/riscv-assembly.tmLanguage.json"
       }
-    ]
+    ],
+
+    "menus": {
+      "editor/context": [
+        {
+          "command": "asmRegisterViewer.showRegisters",
+          "when": "editorLangId == riscv-assembly",
+          "group": "navigation"
+        }
+      ]
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "asmRegisterViewer",
+          "name": "RISC-V Registers"
+        }
+      ]
+    }
       
 
   },
