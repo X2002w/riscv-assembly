@@ -1,0 +1,195 @@
+{
+  "scopeName": "source.riscv",
+  "patterns": [
+    {
+      "include": "#preprocess"
+    },
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#directives"
+    },
+    {
+      "include": "#instructions"
+    },
+    {
+      "include": "#registers"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#labels"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "match": "((#)|(//))(.*)",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.comment.riscv"
+            },
+            "4": {
+              "name": "comment.line.riscv"
+            }
+          }
+        },
+        {
+          "name": "comment.block.riscv",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+
+      ]
+    },
+    "preprocess": {
+      "patterns": [
+        {
+          "match": "^\\s*(#)\\s*(include)\\s+(\"[^\"]*\")",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.preprocessor.riscvj"
+            },
+            "2": {
+              "name": "keyword.control.directive.include.cmeta.preprocessor.include.riscv"
+            },
+            "3": {
+              "name": "string.quoted.include.riscv"
+            }
+          }
+        },
+        {
+          "match": "^\\s*(#)\\s*(define)(\\s+)([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)(.+)",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.preprocessor.riscv"
+            },
+            "2": {
+              "name": "keyword.control.directive.riscv"
+            },
+            "4": {
+              "name": "entity.name.function.preprocessor"
+            },
+            "6": {
+              "name": "variable.parameter.preprocessor"
+            },
+            "7": {
+              "name": "string.unquoted.preprocessor"
+            }
+          }
+        },
+        {
+          "match": "^\\s*(#)\\s*(ifdef|ifndef|else|endif|undef)",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.preprocessor.riscv"
+            },
+            "2": {
+              "name": "keyword.control.directive.riscv"
+            }
+          }
+        }
+       
+      ]
+    },
+
+
+    "directives": {
+      "patterns": [
+        {
+          "match": "(\\.globa?l)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.directive.riscv"
+            },
+            "2": {
+              "name": "entity.name.function.directive.riscv"
+            }
+          }
+
+        },
+        {
+          "match": "(\\.equ)\\s+([a-zA-Z_][a-zA-Z0-9_]*,)\\s*(.+)",
+          "captures": {
+            "1": {
+              "name": "storage.type.directive.riscv"
+            },
+            "2": {
+              "name": "entity.name.function.directive.riscv"
+            },
+            "3": {
+              "name": "constant.numeric.directive.riscv"
+            }
+          }
+        },
+        {
+          "name": "storage.type.directive.riscv",
+          "match": "\\.([a-zA-Z_][a-zA-Z0-9_]*)"
+        }
+      ]
+    },
+    "instructions": {
+      "patterns": [
+        {
+          "match": "\\b(?:la|lla|lga|li|mv|not|neg|negw|sext\\.w|b|j|jr|jal|jalr|ret|tail|call|nop|seqz|snez|sltz|sgtz|fmv\\.s|fabs\\.s|fneg\\.s|fmv\\.d|fabs\\.d|fneg\\.d|csrr|csrw|csrs|csrc|csrwi|csrsi|csrci|csrrw|csrrs|csrrc|csrrwi|csrrsi|csrrci|rdinstret|rdcycle|rdtime|frcsr|fscsr|frrm|fsrm|frflags|fsflags|fsscr|fscsr|frmv|frcsr|fscsr|rdinstreth|rdcycleh|rdtimeh|lh|lb|lw|ld|lhu|lbu|lwu|sw|sh|sb|sd|fld|flw|fsd|fsw|flq|fsq|fld|flw|fld|flw|c\\.ld|c\\.sd|c\\.lw|c\\.sw|c\\.flw|c\\.fsw|c\\.fld|c\\.fsd|c\\.lq|c\\.sq|c\\.flq|c\\.fsq)\\b",
+          "name": "keyword.instruction.pseudo.riscv"
+        },
+        {
+          "match": "\\b(add|addi|sub|mul|div|and|andi|or|ori|xor|xori|sll|slli|srl|srli|sra|srai|beq|bne|blt|bge|bltu|bgeu|jal|jalr|lui|auipc|lb|lh|lw|lbu|lhu|sb|sh|sw)\\b",
+          "name": "keyword.instruction.basic.riscv"
+        },
+        {
+          "match": "\\b(?:LR|SC|AMOSWAP|AMOADD|AMOXOjR|AMOAND|AMOOR|AMOMIN|AMOMAX|AMOMINU|AMOMAXU)\\.(?:W|D)\\b",
+          "name": "keyword.instruction.atomic.riscv"
+        },
+        {
+          "match": "\\b(?:MUL(?:W|H(?:SU|U)?)?|(?:DIV|REM)(?:U?W?|WU?)?)\\b",
+          "name": "keyword.instruction.muldiv.riscv"
+        }
+      ]
+    },
+    "registers": {
+      "patterns": [
+        {
+          "match": "\\b(x0|x1|x2|x3|x4|x5|x6|x7|x8|x9|x10|x11|x12|x13|x14|x15|x16|x17|x18|x19|x20|x21|x22|x23|x24|x25|x26|x27|x28|x29|x30|x31|zero|ra|sp|gp|tp|t0|t1|t2|s0|fp|s1|a0|a1|a2|a3|a4|a5|a6|a7|s2|s3|s4|s5|s6|s7|s8|s9|s10|s11|t3|t4|t5|t6)(,?)",
+          "captures": {
+            "1": {
+              "name": "variable.other.register.riscv"
+            },
+            "2": {
+              "name": "variable.other.register.riscv"
+            }
+          }
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "match": "\\b((0x[0-9a-fA-F]+)|([0-9]+))\\b",
+          "captures": {
+            "2": {
+              "name": "constant.numeric.hexadecimal.riscv"
+            },
+            "3": {
+              "name": "constant.numeric.decimal.riscv"
+            }
+          }
+        }
+
+      ]
+    },
+
+    "labels": {
+      "patterns": [
+        {
+          "name": "entity.name.function.label.riscv",
+          "match": "^[ \\t]*([a-zA-Z_][a-zA-Z0-9_]*)(:)"
+        }
+      ]
+    }
+  }
+}

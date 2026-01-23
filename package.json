@@ -31,7 +31,17 @@
         "firstLint": "^#!/languages/riscv-assembly",
         "configuration": "./language-configuration.json"
       }
+     
+    ],
+
+    "grammars": [
+      {
+        "language": "riscv-assembly",
+        "scopeName": "source.riscv",
+        "path": "./syntaxes/riscv-assembly.tmLanguage.json"
+      }
     ]
+      
 
   },
   "scripts": {
