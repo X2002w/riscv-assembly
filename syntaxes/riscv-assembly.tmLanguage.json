@@ -139,7 +139,15 @@
         },
         {
           "match": "\\b(add|addi|sub|mul|div|and|andi|or|ori|xor|xori|sll|slli|srl|srli|sra|srai|beq|bne|blt|bge|bltu|bgeu|jal|jalr|lui|auipc|lb|lh|lw|lbu|lhu|sb|sh|sw)\\b",
-          "name": "keyword.instruction.riscv"
+          "name": "keyword.instruction.basic.riscv"
+        },
+        {
+          "match": "\\b(?:LR|SC|AMOSWAP|AMOADD|AMOXOjR|AMOAND|AMOOR|AMOMIN|AMOMAX|AMOMINU|AMOMAXU)\\.(?:W|D)\\b",
+          "name": "keyword.instruction.atomic.riscv"
+        },
+        {
+          "match": "\\b(?:MUL(?:W|H(?:SU|U)?)?|(?:DIV|REM)(?:U?W?|WU?)?)\\b",
+          "name": "keyword.instruction.muldiv.riscv"
         }
       ]
     },
