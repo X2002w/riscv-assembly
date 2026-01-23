@@ -2,7 +2,7 @@
   "name": "riscv-assembler",
   "displayName": "RISC-V Assembler",
   "description": "A vscode extension for riacv assembly language suppert",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.108.1"
   },
