@@ -10,8 +10,9 @@ export interface RegisterState {
   changed: boolean;
 }
 
-class asmParser {
+export class asmParser {
 
+  // 每个寄存器的当前状态
   private registers: Map<string, RegisterState> = new Map();
   private history = {
     // 按寄存器名存储的历史值（每行的值）
@@ -20,12 +21,7 @@ class asmParser {
         value: string;     // 该行执行后的值
         previous: string;  // 变化前的值
     }>>(),
-      
-    // 按行号存储的快照（每行所有寄存器的完整状态）
-    lineSnapshots: new Map<number, Map<string, string>>(),
   };
-
-  private registerHistory: Map<string, any[]> = new Map();
 
   constructor() {
     this.initializeRegisters();
@@ -85,22 +81,24 @@ class asmParser {
       });
     });
 
-    this.registerHistory.clear();
     this.history.registerChanges.clear();
-    this.history.lineSnapshots.clear();
+    riscvRegister.forEach(reg => {
+      this.history.registerChanges.set(reg.name, []);
+    });
 
   }
 
+  // 只解析输入的一行汇编指令, 并更新涉及到的regs 历史状态
   private processLine(line: string, lineNumber: number) {
     // 解析汇编指令
 
     // 移除空白字符(\n, \t, 空格)
-    // 解析移除注释(# or // 后面的内容) -> 暂时不处理多行注释
+    // 解析移除注释(# or // 后面的内容) -> 多行注释暂不处理
     const trimmed = line.trim();
 
     if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('//'))
       return;
-    
+
     // 处理行内注释
     const code = trimmed.split('#')[0].split('//')[0].trim();
 
@@ -157,47 +155,34 @@ class asmParser {
       snapshot[name] = reg.currentValue;
     }
 
-    if (!this.registerHistory.has('lineSnapshots')) {
-      this.registerHistory.set('lineSnapshots', []);
-    }
-    const lineSnapshots = this.registerHistory.get('lineSnapshots')!;
-    lineSnapshots[lineNumber] = snapshot;
   }
   
 
   // 解析汇编代码到指定行
   // 每当更改文件之后，重新解析到当前行
-  parseToLine(refursh: boolean,asmCode: string, targetLine: number): Map<string, RegisterState> {
+  parseToLine(refursh: boolean, asmCode: string, targetLine: number): Map<string, RegisterState> {
     const lines: Array<string> = asmCode.split('\n');
-    const processedLines: Array<string> = [];
 
-    
-    if(this.history.lineSnapshots.has(targetLine) && !refursh) {
-      // 已有快照，且不强制刷新 直接恢复寄存器状态
-      const snapshot = this.history.lineSnapshots.get(targetLine)!;
-
-      for (const [name, value] of snapshot) {
-        if (this.registers.has(name)) {
-          const reg = this.registers.get(name)!;
-          reg.previousValues.push(reg.currentValue);
-          reg.currentValue = value;
-          reg.changed = false;
-        }
-      }
-      return this.registers;
-
+    if (refursh) {
+      // 强制刷新，重置寄存器状态
+      this.initializeRegisters();
     }
 
-    // 目标行小于当前行，重置寄存器状态
-   
-    // 更新历史记录
-    this.registerHistory.set('processedLines', processedLines);
-
-    this.saveLineSnapshot(targetLine);
+    // 重新解析到目标行
+    for (let i = 0; i < Math.min(targetLine, lines.length); i++) {
+      this.processLine(lines[i], i + 1);
+    }
 
     return this.registers;
   }
 
+  // 获取寄存器的当前状态
+  getRegisterStates(): Map<string, RegisterState> {
+    return this.registers;
+  }
 
-
+  reset(): void {
+    this.initializeRegisters();
+  }
+ 
 }

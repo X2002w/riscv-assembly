@@ -32,6 +32,11 @@
           "type": "boolean",
           "default": true,
           "description": "是否在切换文件时自动重置寄存器视图"
+        },
+        "asmRegisterViewer.saveReset": {
+          "type": "boolean",
+          "default": false,
+          "description": "是否在保存文件时自动重置寄存器视图"
         }
       }
     },
@@ -44,8 +49,11 @@
       {
         "command": "asmRegisterViewer.reset",
         "title": "Reset RISC-V Registers"
+      },
+      {
+        "command": "riscv-register.toggleShowChanged",
+        "title": "Toggle Show Changed Only"
       }
-
     ],
 
     "languages":[
@@ -79,8 +87,33 @@
           "when": "editorLangId == riscv-assembly",
           "group": "navigation"
         }
+      ],
+      "view/title": [
+        {
+          "command": "asmRegisterViewer.refresh",
+          "when": "view == asmRegisterViewer",
+          "group": "navigation"
+        },
+        {
+          "command": "asmRegisterViewer.reset",
+          "when": "view == asmRegisterViewer",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "asmRegisterViewer.copyValue",
+          "when": "view == asmRegisterViewer",
+          "group": "inline"
+        },
+        {
+          "command": "asmRegisterViewer.editValue",
+          "when": "view == asmRegisterViewer",
+          "group": "inline"
+        }
       ]
     },
+
     "views": {
       "explorer": [
         {
