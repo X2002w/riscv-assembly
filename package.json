@@ -51,6 +51,10 @@
         "title": "Reset RISC-V Registers"
       },
       {
+        "command": "asmRegisterViewer.copyValue",
+        "title": "Copy Register Value"
+      },
+      {
         "command": "riscv-register.toggleShowChanged",
         "title": "Toggle Show Changed Only"
       }
@@ -90,11 +94,6 @@
       ],
       "view/title": [
         {
-          "command": "asmRegisterViewer.refresh",
-          "when": "view == asmRegisterViewer",
-          "group": "navigation"
-        },
-        {
           "command": "asmRegisterViewer.reset",
           "when": "view == asmRegisterViewer",
           "group": "navigation"
@@ -104,12 +103,7 @@
         {
           "command": "asmRegisterViewer.copyValue",
           "when": "view == asmRegisterViewer",
-          "group": "inline"
-        },
-        {
-          "command": "asmRegisterViewer.editValue",
-          "when": "view == asmRegisterViewer",
-          "group": "inline"
+          "group": "navigation"
         }
       ]
     },

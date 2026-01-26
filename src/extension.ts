@@ -31,6 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     }),
     
+
     // 重置所有寄存器
     vscode.commands.registerCommand('asmRegisterViewer.reset', () => {
       registerProvider.resetRegisters();
@@ -80,6 +81,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // 检查是否是 RISC-V 文件
 function isRiscVFile(document: vscode.TextDocument): boolean {
+  //vscode.window.showInformationMessage(`Checking file type for: ${document.fileName}\n Language ID: ${document.languageId}`);
   return document.languageId === 'riscv-assembly' || 
          document.fileName.endsWith('.s') ||
          document.fileName.endsWith('.S');
