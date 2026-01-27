@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { RegisterProvider, RegisterItem } from './registerProvider';
+import { register } from 'module';
 
 
 export function activate(context: vscode.ExtensionContext) {
@@ -69,11 +70,20 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
   
-  // 监听活动编辑器变化
+  // 监听活动编辑器变化 | 文件/语言类型变化
   vscode.window.onDidChangeActiveTextEditor(editor => {
-    if (editor && isRiscVFile(editor.document)) {
-      const line = editor.selection.active.line + 1;
-      registerProvider.updateToLine(editor.document, line);
+    if (editor) {
+      // 读取当前配置
+      const config = vscode.workspace.getConfiguration('asmRegisterViewer');
+      const shouldAutoReset = config.get<boolean>('autoReset', true);
+      if( isRiscVFile(editor.document))
+      {
+        if (shouldAutoReset && registerProvider.getLastDocumentType() != editor.document.languageId)
+          registerProvider.resetRegisters();
+        //const line = editor.selection.active.line + 1;
+        //registerProvider.updateToLine(editor.document, line);
+      }
+      registerProvider.updateLastDocumentType(editor.document);
     }
   });
 }

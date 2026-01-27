@@ -44,6 +44,8 @@ export class RegisterProvider implements vscode.TreeDataProvider<RegisterItem> {
 	private parser: asmParser;
 	private showChangedOnly: boolean = false;
 
+	private lastDocumentType: string | undefined = undefined;
+
 	constructor() {
 		this.parser = new asmParser();
 	}
@@ -118,6 +120,12 @@ export class RegisterProvider implements vscode.TreeDataProvider<RegisterItem> {
     };
     return aliases[name] || '';
   }
+	updateLastDocumentType(document: vscode.TextDocument): void {
+		this.lastDocumentType = document.languageId;
+	}
+	getLastDocumentType(): string | undefined {
+		return this.lastDocumentType;
+	}
 }
 
 
