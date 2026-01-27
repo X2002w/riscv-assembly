@@ -67,7 +67,7 @@ export class RegisterProvider implements vscode.TreeDataProvider<RegisterItem> {
 	// 更新到指定行
 	updateToLine(document: vscode.TextDocument, line: number): void {
 		const text = document.getText();
-		this.parser.parseToLine(false, text, line);
+		this.parser.parseToLine(text, line);
 		this.refresh();
 	}
 

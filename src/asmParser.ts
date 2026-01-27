@@ -160,13 +160,8 @@ export class asmParser {
 
   // 解析汇编代码到指定行
   // 每当更改文件之后，重新解析到当前行
-  parseToLine(refursh: boolean, asmCode: string, targetLine: number): Map<string, RegisterState> {
+  parseToLine(asmCode: string, targetLine: number): Map<string, RegisterState> {
     const lines: Array<string> = asmCode.split('\n');
-
-    if (refursh) {
-      // 强制刷新，重置寄存器状态
-      this.initializeRegisters();
-    }
 
     // 重新解析到目标行
     for (let i = 0; i < Math.min(targetLine, lines.length); i++) {

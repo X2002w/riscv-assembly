@@ -54,8 +54,12 @@ export function activate(context: vscode.ExtensionContext) {
   // 监听文档变化
   vscode.workspace.onDidChangeTextDocument(event => {
     if (isRiscVFile(event.document)) {
+      const config = vscode.workspace.getConfiguration('asmRegisterViewer');
+      const shouldSaveReset = config.get<boolean>('saveReset', true);
       const editor = vscode.window.activeTextEditor;
-      if (editor && editor.document === event.document) {
+      if(shouldSaveReset)
+        registerProvider.resetRegisters();
+      if (editor  && editor.document === event.document) {
         const line = editor.selection.active.line + 1;
         registerProvider.updateToLine(event.document, line);
       }
