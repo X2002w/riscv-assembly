@@ -50,6 +50,7 @@ export class RegisterProvider implements vscode.TreeDataProvider<RegisterItem> {
 		this.parser = new asmParser();
 	}
 
+	//通知 VSCode 树视图需要刷新
 	refresh(): void {
 		this._onDidChangeTreeData.fire();
 	}

@@ -90,7 +90,6 @@ export class asmParser {
 
   // 只解析输入的一行汇编指令, 并更新涉及到的regs 历史状态
   private processLine(line: string, lineNumber: number) {
-    // 解析汇编指令
 
     // 移除空白字符(\n, \t, 空格)
     // 解析移除注释(# or // 后面的内容) -> 多行注释暂不处理
@@ -141,14 +140,49 @@ export class asmParser {
         }
         break;
       }
+      case 'RET': {
+        // ret -> jalr zero, ra, 0
+        // jalr x0, 0(x1) -> pc <- ra + 0, x0 === zero 
+        if (this.registers.has('zero') && this.registers.has('ra')) {
+          const regSrc = this.registers.get('ra')!;
+          const regPc = this.registers.get('pc')!;
+          regPc.previousValues.push(regPc.currentValue);
+          regPc.currentValue = regSrc.currentValue;
+          regPc.changed = true;
+        }
+        break;
+      }
+      case 'CALL': {
+        // call table -> ra <- pc + 4, pc <- table_address
+        if (operands.length !== 1)
+          return;
+        const tableAdderss = operands[0];
+        if (this.registers.has('ra') && this.registers.has('pc')) {
+          const regRa = this.registers.get('ra')!;
+          const regPc = this.registers.get('pc')!;
+          regRa.previousValues.push(regRa.currentValue);
+          regPc.previousValues.push(regPc.currentValue);
+          regRa.currentValue = (BigInt(regPc.currentValue) + BigInt(4)).toString();
+          regPc.currentValue = tableAdderss;
+          regRa.changed = true;
+          regPc.changed = true;
+        }
+
+        break;
+      }
+
 
       default:
         // 其他指令暂不处理
         break;
+      
+      // 二次解析宏
+
     }
 
   }
-
+  // rd, rs1, rs2, imm
+  // rd, zaero,
   private saveLineSnapshot(lineNumber: number) {
     const snapshot: Record<string, string> = {};
     for (const [name, reg] of this.registers) {
@@ -162,6 +196,43 @@ export class asmParser {
   // 每当更改文件之后，重新解析到当前行
   parseToLine(asmCode: string, targetLine: number): Map<string, RegisterState> {
     const lines: Array<string> = asmCode.split('\n');
+
+    // 记录lable地址, define value
+    const defineValue: Map<string, string> = new Map();
+    const labelAddress: Map<string, string> = new Map();
+    defineValue.clear();
+    labelAddress.clear();
+
+    for (let i = 0; i < lines.length; i++) {
+      const trimmed = lines[i].trim();
+      if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('//'))
+        continue;
+      // 处理行内注释
+      const code = trimmed.split('#')[0].split('//')[0].trim();
+      const parts = code.split(/\s+/);
+      if (parts.length < 2)
+        continue;
+      const instruction = parts[0].toUpperCase();
+      const operands = parts.slice(1).join('').split(',');
+      
+      // 单独提取标签: <label:>
+      if (!instruction.endsWith(':')) {
+        const label = instruction.slice(0, -1);
+        labelAddress.set(label, `0x${(i * 4).toString(16).padStart(8, '0')}`);
+        continue;
+      }
+      // .equ <name>, <value>
+      if (instruction === '.EQU' && operands.length === 2) {
+        const name = operands[0].trim();
+        const value = operands[1].trim();
+        defineValue.set(name, value);
+        continue;
+      }
+
+    }
+   
+
+
 
     // 重新解析到目标行
     for (let i = 0; i < Math.min(targetLine, lines.length); i++) {
