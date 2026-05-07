@@ -28,11 +28,11 @@ export class RegisterItem extends vscode.TreeItem {
 		if (!this.register) {
 			return this.label;
 		}
-	return 'Name: ${this.register.name}\n' + 
-					 'Value: ${this.register.currentValue}\n' +
-					 'Type: ${this.register.type}\n' +
-					 'Bits: ${this.register.bits}\n' +
-					 'Changed: ${this.register.changed}\n';
+		return `Name: ${this.register.name}\n` +
+			`Value: ${this.register.currentValue}\n` +
+			`Type: ${this.register.type}\n` +
+			`Bits: ${this.register.bits}\n` +
+			`Changed: ${this.register.changed}`;
 	}
 
 }

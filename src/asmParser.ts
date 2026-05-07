@@ -14,14 +14,6 @@ export class asmParser {
 
   // 每个寄存器的当前状态
   private registers: Map<string, RegisterState> = new Map();
-  private history = {
-    // 按寄存器名存储的历史值（每行的值）
-    registerChanges: new Map<string, Array<{
-        line: number;      // 发生变化的行号
-        value: string;     // 该行执行后的值
-        previous: string;  // 变化前的值
-    }>>(),
-  };
 
   constructor() {
     this.initializeRegisters();
@@ -81,11 +73,36 @@ export class asmParser {
       });
     });
 
-    this.history.registerChanges.clear();
-    riscvRegister.forEach(reg => {
-      this.history.registerChanges.set(reg.name, []);
-    });
+  }
 
+  // 将寄存器值转换为 BigInt
+  private regToBigInt(name: string): bigint {
+    const reg = this.registers.get(name);
+    if (!reg) return BigInt(0);
+    try {
+      return BigInt(reg.currentValue);
+    } catch {
+      return BigInt(0);
+    }
+  }
+
+  // 更新寄存器值并记录历史
+  private setRegister(name: string, value: string) {
+    const reg = this.registers.get(name);
+    if (reg) {
+      reg.previousValues.push(reg.currentValue);
+      reg.currentValue = value;
+      reg.changed = true;
+    }
+  }
+
+  // 解析内存操作数 offset(rs) -> { offset, rs }
+  private parseMemOperand(op: string): { offset: string; rs: string } | null {
+    const match = op.match(/^([^(]+)\(([^)]+)\)$/);
+    if (match) {
+      return { offset: match[1].trim(), rs: match[2].trim() };
+    }
+    return null;
   }
 
   // 只解析输入的一行汇编指令, 并更新涉及到的regs 历史状态
@@ -98,125 +115,382 @@ export class asmParser {
     if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('//'))
       return;
 
+    // 跳过标签行 (label:)
+    if (/^[a-zA-Z_][a-zA-Z0-9_]*:/.test(trimmed))
+      return;
+
     // 处理行内注释
     const code = trimmed.split('#')[0].split('//')[0].trim();
+    if (!code)
+      return;
 
     const parts = code.split(/\s+/);
     if (parts.length < 2)
       return;
 
     const instruction = parts[0].toUpperCase();
-    const operands = parts.slice(1).join('').split(',');
+    const operands = parts.slice(1).join('').split(',').map(s => s.trim());
 
-    // 先解析伪指令
+    // 跳过伪指令 .section .global .space 等
+    if (instruction.startsWith('.'))
+      return;
+
     switch (instruction) {
+      // === 伪指令 ===
       case 'LI': {
-        // li rd, immediate
-        // 小于12bits的立即数 拓展为 addi rd, zero, imm
-        if (operands.length !== 2)
-          return;
+        // li rd, immediate -> addi rd, zero, imm
+        if (operands.length !== 2) return;
         const rd = operands[0];
-        const immediate = operands[1];
-        if (this.registers.has(rd)) {
-          const reg = this.registers.get(rd)!;
-          reg.previousValues.push(reg.currentValue);
-          reg.currentValue = immediate;
-          reg.changed = true;
-        }
+        this.setRegister(rd, '0x' + BigInt(operands[1]).toString(16).padStart(16, '0'));
         break;
       }
       case 'MV': {
-        // mv rd, rs
-        if (operands.length !== 2)
-          return;
-        const rd = operands[0];
-        const rs = operands[1];
+        // mv rd, rs -> addi rd, rs, 0
+        if (operands.length !== 2) return;
+        const rd = operands[0], rs = operands[1];
         if (this.registers.has(rd) && this.registers.has(rs)) {
-          const regDest = this.registers.get(rd)!;
-          const regSrc = this.registers.get(rs)!;
-          regDest.previousValues.push(regDest.currentValue);
-          regDest.currentValue = regSrc.currentValue;
-          regDest.changed = true;
+          this.setRegister(rd, this.registers.get(rs)!.currentValue);
         }
         break;
       }
       case 'RET': {
         // ret -> jalr zero, ra, 0
-        // jalr x0, 0(x1) -> pc <- ra + 0, x0 === zero 
-        if (this.registers.has('zero') && this.registers.has('ra')) {
-          const regSrc = this.registers.get('ra')!;
-          const regPc = this.registers.get('pc')!;
-          regPc.previousValues.push(regPc.currentValue);
-          regPc.currentValue = regSrc.currentValue;
-          regPc.changed = true;
+        if (this.registers.has('ra')) {
+          this.setRegister('pc', this.registers.get('ra')!.currentValue);
         }
         break;
       }
       case 'CALL': {
-        // call table -> ra <- pc + 4, pc <- table_address
-        if (operands.length !== 1)
-          return;
-        const tableAdderss = operands[0];
+        // call offset -> ra <- pc + 4, pc <- target
+        if (operands.length !== 1) return;
         if (this.registers.has('ra') && this.registers.has('pc')) {
-          const regRa = this.registers.get('ra')!;
-          const regPc = this.registers.get('pc')!;
-          regRa.previousValues.push(regRa.currentValue);
-          regPc.previousValues.push(regPc.currentValue);
-          regRa.currentValue = (BigInt(regPc.currentValue) + BigInt(4)).toString();
-          regPc.currentValue = tableAdderss;
-          regRa.changed = true;
-          regPc.changed = true;
+          const nextPc = this.regToBigInt('pc') + BigInt(4);
+          this.setRegister('ra', '0x' + nextPc.toString(16).padStart(16, '0'));
+          this.setRegister('pc', operands[0]);
         }
-
+        break;
+      }
+      case 'LA':
+      case 'LLA': {
+        // la rd, symbol -> rd = address of symbol
+        if (operands.length !== 2) return;
+        this.setRegister(operands[0], operands[1]);
+        break;
+      }
+      case 'NOP': {
+        // nop -> addi zero, zero, 0 (does nothing)
         break;
       }
 
+      // === 算术指令 (R-type: rd, rs1, rs2) ===
+      case 'ADD':
+      case 'ADDW': {
+        if (operands.length !== 3) return;
+        const [rd, rs1, rs2] = operands;
+        if (this.registers.has(rd) && this.registers.has(rs1) && this.registers.has(rs2)) {
+          const result = this.regToBigInt(rs1) + this.regToBigInt(rs2);
+          this.setRegister(rd, '0x' + result.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
+      case 'SUB':
+      case 'SUBW': {
+        if (operands.length !== 3) return;
+        const [rd, rs1, rs2] = operands;
+        if (this.registers.has(rd) && this.registers.has(rs1) && this.registers.has(rs2)) {
+          const result = this.regToBigInt(rs1) - this.regToBigInt(rs2);
+          this.setRegister(rd, '0x' + result.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
+
+      // === 算术立即数 (I-type: rd, rs1, imm) ===
+      case 'ADDI':
+      case 'ADDIW': {
+        if (operands.length !== 3) return;
+        const [rd, rs1, imm] = operands;
+        if (this.registers.has(rd) && this.registers.has(rs1)) {
+          const result = this.regToBigInt(rs1) + BigInt(imm);
+          this.setRegister(rd, '0x' + result.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
+
+      // === 逻辑指令 ===
+      case 'AND':
+      case 'ANDI': {
+        if (operands.length !== 3) return;
+        const [rd, rs1, rs2] = operands;
+        if (this.registers.has(rd) && this.registers.has(rs1)) {
+          const val = this.regToBigInt(rs1) & this.regToBigInt(rs2);
+          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
+      case 'OR':
+      case 'ORI': {
+        if (operands.length !== 3) return;
+        const [rd, rs1, rs2] = operands;
+        if (this.registers.has(rd) && this.registers.has(rs1)) {
+          const val = this.regToBigInt(rs1) | this.regToBigInt(rs2);
+          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
+      case 'XOR':
+      case 'XORI': {
+        if (operands.length !== 3) return;
+        const [rd, rs1, rs2] = operands;
+        if (this.registers.has(rd) && this.registers.has(rs1)) {
+          const val = this.regToBigInt(rs1) ^ this.regToBigInt(rs2);
+          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
+      case 'SLL':
+      case 'SLLI': {
+        if (operands.length !== 3) return;
+        const [rd, rs1, rs2] = operands;
+        if (this.registers.has(rd) && this.registers.has(rs1)) {
+          const shift = Number(BigInt(rs2) & BigInt(0x3F));
+          const val = this.regToBigInt(rs1) << BigInt(shift);
+          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
+      case 'SRL':
+      case 'SRLI': {
+        if (operands.length !== 3) return;
+        const [rd, rs1, rs2] = operands;
+        if (this.registers.has(rd) && this.registers.has(rs1)) {
+          const shift = Number(BigInt(rs2) & BigInt(0x3F));
+          const val = this.regToBigInt(rs1) >> BigInt(shift);
+          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
+      case 'SRA':
+      case 'SRAI': {
+        if (operands.length !== 3) return;
+        const [rd, rs1, rs2] = operands;
+        if (this.registers.has(rd) && this.registers.has(rs1)) {
+          const shift = Number(BigInt(rs2) & BigInt(0x3F));
+          // Arithmetic right shift via BigInt (sign-extending)
+          const value = this.regToBigInt(rs1);
+          const val = value >> BigInt(shift);
+          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
+
+      // === 加载/存储 ===
+      case 'LW':
+      case 'LD':
+      case 'LB':
+      case 'LH':
+      case 'LBU':
+      case 'LHU':
+      case 'LWU': {
+        // lw rd, offset(rs1) -> rd changed (value from memory, mark as loaded)
+        if (operands.length !== 2) return;
+        const rd = operands[0];
+        this.setRegister(rd, `mem[${operands[1]}]`);
+        break;
+      }
+      case 'SW':
+      case 'SD':
+      case 'SB':
+      case 'SH': {
+        // sw rs2, offset(rs1) -> memory changed, registers unchanged
+        break;
+      }
+
+      // === LUI / AUIPC ===
+      case 'LUI': {
+        // lui rd, imm -> rd = imm << 12
+        if (operands.length !== 2) return;
+        const rd = operands[0];
+        const imm = BigInt(operands[1]) << BigInt(12);
+        this.setRegister(rd, '0x' + imm.toString(16).padStart(16, '0'));
+        break;
+      }
+      case 'AUIPC': {
+        // auipc rd, imm -> rd = pc + (imm << 12)
+        if (operands.length !== 2) return;
+        const rd = operands[0];
+        const imm = BigInt(operands[1]) << BigInt(12);
+        const result = this.regToBigInt('pc') + imm;
+        this.setRegister(rd, '0x' + result.toString(16).padStart(16, '0'));
+        break;
+      }
+
+      // === 跳转指令 ===
+      case 'JAL': {
+        // jal rd, offset -> rd = pc + 4, pc += offset
+        if (operands.length !== 2) return;
+        const rd = operands[0], offset = operands[1];
+        const nextPc = this.regToBigInt('pc') + BigInt(4);
+        this.setRegister(rd, '0x' + nextPc.toString(16).padStart(16, '0'));
+        this.setRegister('pc', offset);
+        break;
+      }
+      case 'JALR': {
+        // jalr rd, offset(rs1) -> rd = pc + 4, pc = rs1 + offset
+        if (operands.length !== 2) return;
+        const rd = operands[0];
+        const memOp = this.parseMemOperand(operands[1]);
+        const nextPc = this.regToBigInt('pc') + BigInt(4);
+        this.setRegister(rd, '0x' + nextPc.toString(16).padStart(16, '0'));
+        if (memOp && this.registers.has(memOp.rs)) {
+          const target = this.regToBigInt(memOp.rs) + BigInt(memOp.offset);
+          this.setRegister('pc', '0x' + target.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
+      case 'J':
+      case 'JR': {
+        // j offset -> jal zero, offset; jr rs -> jalr zero, 0(rs)
+        if (operands.length !== 1) return;
+        this.setRegister('pc', operands[0]);
+        break;
+      }
+
+      // === 分支指令 (可能改变 pc) ===
+      case 'BEQ':
+      case 'BNE':
+      case 'BLT':
+      case 'BGE':
+      case 'BLTU':
+      case 'BGEU': {
+        // beq/bne/blt/bge rs1, rs2, offset -> if condition, pc += offset
+        if (operands.length !== 3) return;
+        const [rs1, rs2, offset] = operands;
+        if (this.registers.has(rs1) && this.registers.has(rs2)) {
+          const v1 = this.regToBigInt(rs1);
+          const v2 = this.regToBigInt(rs2);
+          let taken = false;
+          switch (instruction) {
+            case 'BEQ': taken = v1 === v2; break;
+            case 'BNE': taken = v1 !== v2; break;
+            case 'BLT': taken = v1 < v2; break;
+            case 'BGE': taken = v1 >= v2; break;
+            case 'BLTU': taken = v1 < v2; break;
+            case 'BGEU': taken = v1 >= v2; break;
+          }
+          if (taken) {
+            this.setRegister('pc', offset);
+          }
+        }
+        break;
+      }
+
+      // === 伪指令扩展 ===
+      case 'NEG':
+      case 'NEGW': {
+        // neg rd, rs -> sub rd, zero, rs
+        if (operands.length !== 2) return;
+        const [rd, rs] = operands;
+        if (this.registers.has(rd) && this.registers.has(rs)) {
+          const val = BigInt(0) - this.regToBigInt(rs);
+          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
+      case 'NOT': {
+        // not rd, rs -> xori rd, rs, -1
+        if (operands.length !== 2) return;
+        const [rd, rs] = operands;
+        if (this.registers.has(rd) && this.registers.has(rs)) {
+          const val = this.regToBigInt(rs) ^ BigInt(-1);
+          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
+      case 'SEQZ': {
+        // seqz rd, rs -> rd = (rs == 0) ? 1 : 0
+        if (operands.length !== 2) return;
+        const [rd, rs] = operands;
+        if (this.registers.has(rd) && this.registers.has(rs)) {
+          const val = this.regToBigInt(rs) === BigInt(0) ? BigInt(1) : BigInt(0);
+          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
+      case 'SNEZ': {
+        // snez rd, rs -> rd = (rs != 0) ? 1 : 0
+        if (operands.length !== 2) return;
+        const [rd, rs] = operands;
+        if (this.registers.has(rd) && this.registers.has(rs)) {
+          const val = this.regToBigInt(rs) !== BigInt(0) ? BigInt(1) : BigInt(0);
+          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
+      case 'SLTZ': {
+        // sltz rd, rs -> rd = (rs < 0) ? 1 : 0
+        if (operands.length !== 2) return;
+        const [rd, rs] = operands;
+        if (this.registers.has(rd) && this.registers.has(rs)) {
+          const val = this.regToBigInt(rs) < BigInt(0) ? BigInt(1) : BigInt(0);
+          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
+      case 'SGTZ': {
+        // sgtz rd, rs -> rd = (rs > 0) ? 1 : 0
+        if (operands.length !== 2) return;
+        const [rd, rs] = operands;
+        if (this.registers.has(rd) && this.registers.has(rs)) {
+          const val = this.regToBigInt(rs) > BigInt(0) ? BigInt(1) : BigInt(0);
+          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
+      case 'SEXT.W': {
+        // sext.w rd, rs -> sign-extend 32-bit value
+        if (operands.length !== 2) return;
+        const [rd, rs] = operands;
+        if (this.registers.has(rd) && this.registers.has(rs)) {
+          const val32 = BigInt.asIntN(32, this.regToBigInt(rs));
+          this.setRegister(rd, '0x' + val32.toString(16).padStart(16, '0'));
+        }
+        break;
+      }
 
       default:
-        // 其他指令暂不处理
         break;
-      
-      // 二次解析宏
-
     }
 
   }
-  // rd, rs1, rs2, imm
-  // rd, zaero,
-  private saveLineSnapshot(lineNumber: number) {
-    const snapshot: Record<string, string> = {};
-    for (const [name, reg] of this.registers) {
-      snapshot[name] = reg.currentValue;
-    }
-
-  }
-  
 
   // 解析汇编代码到指定行
   // 每当更改文件之后，重新解析到当前行
   parseToLine(asmCode: string, targetLine: number): Map<string, RegisterState> {
+    // 每次重新解析前先重置所有寄存器
+    this.initializeRegisters();
+
     const lines: Array<string> = asmCode.split('\n');
 
-    // 记录lable地址, define value
+    // 第一遍：收集光标之前所有行的 label 地址和 equ 定义
     const defineValue: Map<string, string> = new Map();
     const labelAddress: Map<string, string> = new Map();
-    defineValue.clear();
-    labelAddress.clear();
 
-    for (let i = 0; i < lines.length; i++) {
+    for (let i = 0; i < Math.min(targetLine, lines.length); i++) {
       const trimmed = lines[i].trim();
       if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('//'))
         continue;
       // 处理行内注释
       const code = trimmed.split('#')[0].split('//')[0].trim();
+      if (!code)
+        continue;
       const parts = code.split(/\s+/);
       if (parts.length < 2)
         continue;
       const instruction = parts[0].toUpperCase();
       const operands = parts.slice(1).join('').split(',');
-      
+
       // 单独提取标签: <label:>
-      if (!instruction.endsWith(':')) {
+      if (instruction.endsWith(':')) {
         const label = instruction.slice(0, -1);
         labelAddress.set(label, `0x${(i * 4).toString(16).padStart(8, '0')}`);
         continue;

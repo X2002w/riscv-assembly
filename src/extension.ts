@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { RegisterProvider, RegisterItem } from './registerProvider';
-import { register } from 'module';
 
 
 export function activate(context: vscode.ExtensionContext) {
@@ -43,25 +42,42 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('asmRegisterViewer.copyValue', (item: RegisterItem) => {
       if (item && item.register) {
         vscode.env.clipboard.writeText(item.register.currentValue);
-        vscode.window.showInformationMessage(`Copied: ${item.register.currentValue}`);
+        vscode.window.showInformationMessage(`Copied ${item.register.name}: ${item.register.currentValue}`);
       }
+    }),
+
+    // 切换"仅显示已修改"
+    vscode.commands.registerCommand('riscv-register.toggleShowChanged', () => {
+      registerProvider.toggleShowChangedOnly();
     })
   ];
   
   // 将所有命令添加到订阅
   commands.forEach(command => context.subscriptions.push(command));
   
-  // 监听文档变化
+  // 监听文档编辑变化 — 实时更新到光标所在行
   vscode.workspace.onDidChangeTextDocument(event => {
     if (isRiscVFile(event.document)) {
-      const config = vscode.workspace.getConfiguration('asmRegisterViewer');
-      const shouldSaveReset = config.get<boolean>('saveReset', true);
       const editor = vscode.window.activeTextEditor;
-      if(shouldSaveReset)
-        registerProvider.resetRegisters();
-      if (editor  && editor.document === event.document) {
+      if (editor && editor.document === event.document) {
         const line = editor.selection.active.line + 1;
         registerProvider.updateToLine(event.document, line);
+      }
+    }
+  });
+
+  // 监听文档保存 — 根据配置决定是否重置寄存器
+  vscode.workspace.onDidSaveTextDocument(document => {
+    if (isRiscVFile(document)) {
+      const config = vscode.workspace.getConfiguration('asmRegisterViewer');
+      const shouldSaveReset = config.get<boolean>('saveReset', false);
+      if (shouldSaveReset) {
+        registerProvider.resetRegisters();
+        const editor = vscode.window.activeTextEditor;
+        if (editor && editor.document === document) {
+          const line = editor.selection.active.line + 1;
+          registerProvider.updateToLine(document, line);
+        }
       }
     }
   });
@@ -77,15 +93,14 @@ export function activate(context: vscode.ExtensionContext) {
   // 监听活动编辑器变化 | 文件/语言类型变化
   vscode.window.onDidChangeActiveTextEditor(editor => {
     if (editor) {
-      // 读取当前配置
       const config = vscode.workspace.getConfiguration('asmRegisterViewer');
       const shouldAutoReset = config.get<boolean>('autoReset', true);
-      if( isRiscVFile(editor.document))
-      {
-        if (shouldAutoReset && registerProvider.getLastDocumentType() != editor.document.languageId)
+      if (isRiscVFile(editor.document)) {
+        if (shouldAutoReset && registerProvider.getLastDocumentType() !== editor.document.languageId) {
           registerProvider.resetRegisters();
-        //const line = editor.selection.active.line + 1;
-        //registerProvider.updateToLine(editor.document, line);
+        }
+        const line = editor.selection.active.line + 1;
+        registerProvider.updateToLine(editor.document, line);
       }
       registerProvider.updateLastDocumentType(editor.document);
     }
