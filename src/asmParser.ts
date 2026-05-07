@@ -15,6 +15,10 @@ export class asmParser {
   // 每个寄存器的当前状态
   private registers: Map<string, RegisterState> = new Map();
 
+  // 当前解析上下文中的 label 和 equ 定义
+  private defineValue: Map<string, string> = new Map();
+  private labelAddress: Map<string, string> = new Map();
+
   constructor() {
     this.initializeRegisters();
   }
@@ -105,6 +109,38 @@ export class asmParser {
     return null;
   }
 
+  // 安全地将字符串转换为 BigInt
+  // 支持: 十进制/十六进制数字、.equ 常量、label 地址、寄存器名
+  private safeBigInt(s: string): bigint {
+    // 如果是纯数字 (十进制或0x十六进制)，直接转换
+    if (/^-?[0-9]+$/.test(s) || /^-?0x[0-9a-fA-F]+$/.test(s)) {
+      try {
+        return BigInt(s);
+      } catch {
+        // fall through to symbol lookup
+      }
+    }
+    // 检查 .equ 常量定义
+    if (this.defineValue.has(s)) {
+      return this.safeBigInt(this.defineValue.get(s)!);
+    }
+    // 检查 label 地址
+    if (this.labelAddress.has(s)) {
+      return this.safeBigInt(this.labelAddress.get(s)!);
+    }
+    // 检查是否是寄存器名（取其当前值）
+    if (this.registers.has(s)) {
+      return this.regToBigInt(s);
+    }
+    // 无法解析，返回 0
+    return BigInt(0);
+  }
+
+  // 格式化为规范的 hex 字符串
+  private fmtHex(n: bigint): string {
+    return '0x' + n.toString(16).padStart(16, '0');
+  }
+
   // 只解析输入的一行汇编指令, 并更新涉及到的regs 历史状态
   private processLine(line: string, lineNumber: number) {
 
@@ -141,7 +177,7 @@ export class asmParser {
         // li rd, immediate -> addi rd, zero, imm
         if (operands.length !== 2) return;
         const rd = operands[0];
-        this.setRegister(rd, '0x' + BigInt(operands[1]).toString(16).padStart(16, '0'));
+        this.setRegister(rd, this.fmtHex(this.safeBigInt(operands[1])));
         break;
       }
       case 'MV': {
@@ -165,7 +201,7 @@ export class asmParser {
         if (operands.length !== 1) return;
         if (this.registers.has('ra') && this.registers.has('pc')) {
           const nextPc = this.regToBigInt('pc') + BigInt(4);
-          this.setRegister('ra', '0x' + nextPc.toString(16).padStart(16, '0'));
+          this.setRegister('ra', this.fmtHex(nextPc));
           this.setRegister('pc', operands[0]);
         }
         break;
@@ -189,7 +225,7 @@ export class asmParser {
         const [rd, rs1, rs2] = operands;
         if (this.registers.has(rd) && this.registers.has(rs1) && this.registers.has(rs2)) {
           const result = this.regToBigInt(rs1) + this.regToBigInt(rs2);
-          this.setRegister(rd, '0x' + result.toString(16).padStart(16, '0'));
+          this.setRegister(rd, this.fmtHex(result));
         }
         break;
       }
@@ -199,7 +235,7 @@ export class asmParser {
         const [rd, rs1, rs2] = operands;
         if (this.registers.has(rd) && this.registers.has(rs1) && this.registers.has(rs2)) {
           const result = this.regToBigInt(rs1) - this.regToBigInt(rs2);
-          this.setRegister(rd, '0x' + result.toString(16).padStart(16, '0'));
+          this.setRegister(rd, this.fmtHex(result));
         }
         break;
       }
@@ -210,8 +246,8 @@ export class asmParser {
         if (operands.length !== 3) return;
         const [rd, rs1, imm] = operands;
         if (this.registers.has(rd) && this.registers.has(rs1)) {
-          const result = this.regToBigInt(rs1) + BigInt(imm);
-          this.setRegister(rd, '0x' + result.toString(16).padStart(16, '0'));
+          const result = this.regToBigInt(rs1) + this.safeBigInt(imm);
+          this.setRegister(rd, this.fmtHex(result));
         }
         break;
       }
@@ -223,7 +259,7 @@ export class asmParser {
         const [rd, rs1, rs2] = operands;
         if (this.registers.has(rd) && this.registers.has(rs1)) {
           const val = this.regToBigInt(rs1) & this.regToBigInt(rs2);
-          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+          this.setRegister(rd, this.fmtHex(val));
         }
         break;
       }
@@ -233,7 +269,7 @@ export class asmParser {
         const [rd, rs1, rs2] = operands;
         if (this.registers.has(rd) && this.registers.has(rs1)) {
           const val = this.regToBigInt(rs1) | this.regToBigInt(rs2);
-          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+          this.setRegister(rd, this.fmtHex(val));
         }
         break;
       }
@@ -243,7 +279,7 @@ export class asmParser {
         const [rd, rs1, rs2] = operands;
         if (this.registers.has(rd) && this.registers.has(rs1)) {
           const val = this.regToBigInt(rs1) ^ this.regToBigInt(rs2);
-          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+          this.setRegister(rd, this.fmtHex(val));
         }
         break;
       }
@@ -252,9 +288,9 @@ export class asmParser {
         if (operands.length !== 3) return;
         const [rd, rs1, rs2] = operands;
         if (this.registers.has(rd) && this.registers.has(rs1)) {
-          const shift = Number(BigInt(rs2) & BigInt(0x3F));
+          const shift = Number(this.safeBigInt(rs2) & BigInt(0x3F));
           const val = this.regToBigInt(rs1) << BigInt(shift);
-          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+          this.setRegister(rd, this.fmtHex(val));
         }
         break;
       }
@@ -263,9 +299,9 @@ export class asmParser {
         if (operands.length !== 3) return;
         const [rd, rs1, rs2] = operands;
         if (this.registers.has(rd) && this.registers.has(rs1)) {
-          const shift = Number(BigInt(rs2) & BigInt(0x3F));
+          const shift = Number(this.safeBigInt(rs2) & BigInt(0x3F));
           const val = this.regToBigInt(rs1) >> BigInt(shift);
-          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+          this.setRegister(rd, this.fmtHex(val));
         }
         break;
       }
@@ -274,11 +310,10 @@ export class asmParser {
         if (operands.length !== 3) return;
         const [rd, rs1, rs2] = operands;
         if (this.registers.has(rd) && this.registers.has(rs1)) {
-          const shift = Number(BigInt(rs2) & BigInt(0x3F));
-          // Arithmetic right shift via BigInt (sign-extending)
+          const shift = Number(this.safeBigInt(rs2) & BigInt(0x3F));
           const value = this.regToBigInt(rs1);
           const val = value >> BigInt(shift);
-          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+          this.setRegister(rd, this.fmtHex(val));
         }
         break;
       }
@@ -310,17 +345,17 @@ export class asmParser {
         // lui rd, imm -> rd = imm << 12
         if (operands.length !== 2) return;
         const rd = operands[0];
-        const imm = BigInt(operands[1]) << BigInt(12);
-        this.setRegister(rd, '0x' + imm.toString(16).padStart(16, '0'));
+        const imm = this.safeBigInt(operands[1]) << BigInt(12);
+        this.setRegister(rd, this.fmtHex(imm));
         break;
       }
       case 'AUIPC': {
         // auipc rd, imm -> rd = pc + (imm << 12)
         if (operands.length !== 2) return;
         const rd = operands[0];
-        const imm = BigInt(operands[1]) << BigInt(12);
+        const imm = this.safeBigInt(operands[1]) << BigInt(12);
         const result = this.regToBigInt('pc') + imm;
-        this.setRegister(rd, '0x' + result.toString(16).padStart(16, '0'));
+        this.setRegister(rd, this.fmtHex(result));
         break;
       }
 
@@ -330,7 +365,7 @@ export class asmParser {
         if (operands.length !== 2) return;
         const rd = operands[0], offset = operands[1];
         const nextPc = this.regToBigInt('pc') + BigInt(4);
-        this.setRegister(rd, '0x' + nextPc.toString(16).padStart(16, '0'));
+        this.setRegister(rd, this.fmtHex(nextPc));
         this.setRegister('pc', offset);
         break;
       }
@@ -340,10 +375,10 @@ export class asmParser {
         const rd = operands[0];
         const memOp = this.parseMemOperand(operands[1]);
         const nextPc = this.regToBigInt('pc') + BigInt(4);
-        this.setRegister(rd, '0x' + nextPc.toString(16).padStart(16, '0'));
+        this.setRegister(rd, this.fmtHex(nextPc));
         if (memOp && this.registers.has(memOp.rs)) {
-          const target = this.regToBigInt(memOp.rs) + BigInt(memOp.offset);
-          this.setRegister('pc', '0x' + target.toString(16).padStart(16, '0'));
+          const target = this.regToBigInt(memOp.rs) + this.safeBigInt(memOp.offset);
+          this.setRegister('pc', this.fmtHex(target));
         }
         break;
       }
@@ -392,7 +427,7 @@ export class asmParser {
         const [rd, rs] = operands;
         if (this.registers.has(rd) && this.registers.has(rs)) {
           const val = BigInt(0) - this.regToBigInt(rs);
-          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+          this.setRegister(rd, this.fmtHex(val));
         }
         break;
       }
@@ -402,7 +437,7 @@ export class asmParser {
         const [rd, rs] = operands;
         if (this.registers.has(rd) && this.registers.has(rs)) {
           const val = this.regToBigInt(rs) ^ BigInt(-1);
-          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+          this.setRegister(rd, this.fmtHex(val));
         }
         break;
       }
@@ -412,7 +447,7 @@ export class asmParser {
         const [rd, rs] = operands;
         if (this.registers.has(rd) && this.registers.has(rs)) {
           const val = this.regToBigInt(rs) === BigInt(0) ? BigInt(1) : BigInt(0);
-          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+          this.setRegister(rd, this.fmtHex(val));
         }
         break;
       }
@@ -422,7 +457,7 @@ export class asmParser {
         const [rd, rs] = operands;
         if (this.registers.has(rd) && this.registers.has(rs)) {
           const val = this.regToBigInt(rs) !== BigInt(0) ? BigInt(1) : BigInt(0);
-          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+          this.setRegister(rd, this.fmtHex(val));
         }
         break;
       }
@@ -432,7 +467,7 @@ export class asmParser {
         const [rd, rs] = operands;
         if (this.registers.has(rd) && this.registers.has(rs)) {
           const val = this.regToBigInt(rs) < BigInt(0) ? BigInt(1) : BigInt(0);
-          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+          this.setRegister(rd, this.fmtHex(val));
         }
         break;
       }
@@ -442,7 +477,7 @@ export class asmParser {
         const [rd, rs] = operands;
         if (this.registers.has(rd) && this.registers.has(rs)) {
           const val = this.regToBigInt(rs) > BigInt(0) ? BigInt(1) : BigInt(0);
-          this.setRegister(rd, '0x' + val.toString(16).padStart(16, '0'));
+          this.setRegister(rd, this.fmtHex(val));
         }
         break;
       }
@@ -452,7 +487,7 @@ export class asmParser {
         const [rd, rs] = operands;
         if (this.registers.has(rd) && this.registers.has(rs)) {
           const val32 = BigInt.asIntN(32, this.regToBigInt(rs));
-          this.setRegister(rd, '0x' + val32.toString(16).padStart(16, '0'));
+          this.setRegister(rd, this.fmtHex(val32));
         }
         break;
       }
@@ -472,8 +507,8 @@ export class asmParser {
     const lines: Array<string> = asmCode.split('\n');
 
     // 第一遍：收集光标之前所有行的 label 地址和 equ 定义
-    const defineValue: Map<string, string> = new Map();
-    const labelAddress: Map<string, string> = new Map();
+    this.defineValue.clear();
+    this.labelAddress.clear();
 
     for (let i = 0; i < Math.min(targetLine, lines.length); i++) {
       const trimmed = lines[i].trim();
@@ -484,23 +519,24 @@ export class asmParser {
       if (!code)
         continue;
       const parts = code.split(/\s+/);
-      if (parts.length < 2)
-        continue;
-      const instruction = parts[0].toUpperCase();
-      const operands = parts.slice(1).join('').split(',');
+      const firstToken = parts[0].toUpperCase();
 
-      // 单独提取标签: <label:>
-      if (instruction.endsWith(':')) {
-        const label = instruction.slice(0, -1);
-        labelAddress.set(label, `0x${(i * 4).toString(16).padStart(8, '0')}`);
+      // 标签: label: (可能单独成行)
+      if (firstToken.endsWith(':')) {
+        const label = firstToken.slice(0, -1);
+        this.labelAddress.set(label, this.fmtHex(BigInt(i * 4)));
         continue;
       }
-      // .equ <name>, <value>
-      if (instruction === '.EQU' && operands.length === 2) {
-        const name = operands[0].trim();
-        const value = operands[1].trim();
-        defineValue.set(name, value);
+      // 需要至少2个token才是指令行
+      if (parts.length < 2)
         continue;
+      const operands = parts.slice(1).join('').split(',');
+
+      // .equ <name>, <value>
+      if (firstToken === '.EQU' && parts.length >= 3) {
+        const name = parts[1].replace(/,/g, '').trim();
+        const value = parts.slice(2).join('').replace(/,/g, '').trim();
+        this.defineValue.set(name, value);
       }
 
     }
