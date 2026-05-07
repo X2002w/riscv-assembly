@@ -29,40 +29,40 @@ export class asmParser {
 
       // 32个通用寄存器
       // 使用寄存器的别名，而不是x0 - x31
-      { name: 'zero', bits: 64, type: 'special' as const, init: '0x0000000000000000' },
-      { name: 'ra', bits: 64, type: 'temp' as const, init: '0x0000000000000000' },
-      { name: 'sp', bits: 64, type: 'special' as const, init: '0x0000000000000000' },
-      { name: 'gp', bits: 64, type: 'special' as const, init: '0x0000000000000000' },
-      { name: 'tp', bits: 64, type: 'special' as const, init: '0x0000000000000000' },
-      { name: 't0', bits: 64, type: 'temp' as const, init: '0x0000000000000000' },
-      { name: 't1', bits: 64, type: 'temp' as const, init: '0x0000000000000000' },
-      { name: 't2', bits: 64, type: 'temp' as const, init: '0x0000000000000000' },
-      { name: 's0', bits: 64, type: 'save' as const, init: '0x0000000000000000' },
-      { name: 's1', bits: 64, type: 'save' as const, init: '0x0000000000000000' },
-      { name: 'a0', bits: 64, type: 'temp' as const, init: '0x0000000000000000' },
-      { name: 'a1', bits: 64, type: 'temp' as const, init: '0x0000000000000000' },
-      { name: 'a2', bits: 64, type: 'temp' as const, init: '0x0000000000000000' },
-      { name: 'a3', bits: 64, type: 'temp' as const, init: '0x0000000000000000' },
-      { name: 'a4', bits: 64, type: 'temp' as const, init: '0x0000000000000000' },
-      { name: 'a5', bits: 64, type: 'temp' as const, init: '0x0000000000000000' },
-      { name: 'a6', bits: 64, type: 'temp' as const, init: '0x0000000000000000' },
-      { name: 'a7', bits: 64, type: 'temp' as const, init: '0x0000000000000000' },
-      { name: 's2', bits: 64, type: 'save' as const, init: '0x0000000000000000' },
-      { name: 's3', bits: 64, type: 'save' as const, init: '0x0000000000000000' },
-      { name: 's4', bits: 64, type: 'save' as const, init: '0x0000000000000000' },
-      { name: 's5', bits: 64, type: 'save' as const, init: '0x0000000000000000' },
-      { name: 's6', bits: 64, type: 'save' as const, init: '0x0000000000000000' },
-      { name: 's7', bits: 64, type: 'save' as const, init: '0x0000000000000000' },
-      { name: 's8', bits: 64, type: 'save' as const, init: '0x0000000000000000' },
-      { name: 's9', bits: 64, type: 'save' as const, init: '0x0000000000000000' },
-      { name: 's10', bits: 64, type: 'save' as const, init: '0x0000000000000000' },
-      { name: 's11', bits: 64, type: 'save' as const, init: '0x0000000000000000' },
-      { name: 't3', bits: 64, type: 'temp' as const, init: '0x0000000000000000' },
-      { name: 't4', bits: 64, type: 'temp' as const, init: '0x0000000000000000' },
-      { name: 't5', bits: 64, type: 'temp' as const, init: '0x0000000000000000' },
-      { name: 't6', bits: 64, type: 'temp' as const, init: '0x0000000000000000' },
+      { name: 'zero', bits: 64, type: 'special' as const, init: '0x0' },
+      { name: 'ra', bits: 64, type: 'temp' as const, init: '0x0' },
+      { name: 'sp', bits: 64, type: 'special' as const, init: '0x0' },
+      { name: 'gp', bits: 64, type: 'special' as const, init: '0x0' },
+      { name: 'tp', bits: 64, type: 'special' as const, init: '0x0' },
+      { name: 't0', bits: 64, type: 'temp' as const, init: '0x0' },
+      { name: 't1', bits: 64, type: 'temp' as const, init: '0x0' },
+      { name: 't2', bits: 64, type: 'temp' as const, init: '0x0' },
+      { name: 's0', bits: 64, type: 'save' as const, init: '0x0' },
+      { name: 's1', bits: 64, type: 'save' as const, init: '0x0' },
+      { name: 'a0', bits: 64, type: 'temp' as const, init: '0x0' },
+      { name: 'a1', bits: 64, type: 'temp' as const, init: '0x0' },
+      { name: 'a2', bits: 64, type: 'temp' as const, init: '0x0' },
+      { name: 'a3', bits: 64, type: 'temp' as const, init: '0x0' },
+      { name: 'a4', bits: 64, type: 'temp' as const, init: '0x0' },
+      { name: 'a5', bits: 64, type: 'temp' as const, init: '0x0' },
+      { name: 'a6', bits: 64, type: 'temp' as const, init: '0x0' },
+      { name: 'a7', bits: 64, type: 'temp' as const, init: '0x0' },
+      { name: 's2', bits: 64, type: 'save' as const, init: '0x0' },
+      { name: 's3', bits: 64, type: 'save' as const, init: '0x0' },
+      { name: 's4', bits: 64, type: 'save' as const, init: '0x0' },
+      { name: 's5', bits: 64, type: 'save' as const, init: '0x0' },
+      { name: 's6', bits: 64, type: 'save' as const, init: '0x0' },
+      { name: 's7', bits: 64, type: 'save' as const, init: '0x0' },
+      { name: 's8', bits: 64, type: 'save' as const, init: '0x0' },
+      { name: 's9', bits: 64, type: 'save' as const, init: '0x0' },
+      { name: 's10', bits: 64, type: 'save' as const, init: '0x0' },
+      { name: 's11', bits: 64, type: 'save' as const, init: '0x0' },
+      { name: 't3', bits: 64, type: 'temp' as const, init: '0x0' },
+      { name: 't4', bits: 64, type: 'temp' as const, init: '0x0' },
+      { name: 't5', bits: 64, type: 'temp' as const, init: '0x0' },
+      { name: 't6', bits: 64, type: 'temp' as const, init: '0x0' },
       // program counter
-      { name: 'pc', bits: 64, type: 'special' as const, init: '0x0000000000000000' }
+      { name: 'pc', bits: 64, type: 'special' as const, init: '0x0' }
     ];
 
     this.registers.clear();
@@ -136,9 +136,12 @@ export class asmParser {
     return BigInt(0);
   }
 
-  // 格式化为规范的 hex 字符串
+  // 格式化为紧凑 hex 字符串 (负值以64位补码显示)
   private fmtHex(n: bigint): string {
-    return '0x' + n.toString(16).padStart(16, '0');
+    if (n < 0) {
+      n = (BigInt(1) << BigInt(64)) + n;
+    }
+    return '0x' + n.toString(16);
   }
 
   // 只解析输入的一行汇编指令, 并更新涉及到的regs 历史状态
@@ -165,7 +168,10 @@ export class asmParser {
       return;
 
     const instruction = parts[0].toUpperCase();
-    const operands = parts.slice(1).join('').split(',').map(s => s.trim());
+    const operands = parts.slice(1)
+      .flatMap(p => p.split(','))
+      .filter(s => s.length > 0)
+      .map(s => s.trim());
 
     // 跳过伪指令 .section .global .space 等
     if (instruction.startsWith('.'))
@@ -530,7 +536,9 @@ export class asmParser {
       // 需要至少2个token才是指令行
       if (parts.length < 2)
         continue;
-      const operands = parts.slice(1).join('').split(',');
+      const operands = parts.slice(1)
+        .flatMap((p: string) => p.split(','))
+        .filter((s: string) => s.length > 0);
 
       // .equ <name>, <value>
       if (firstToken === '.EQU' && parts.length >= 3) {

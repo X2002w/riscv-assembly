@@ -49,6 +49,11 @@ export function activate(context: vscode.ExtensionContext) {
     // 切换"仅显示已修改"
     vscode.commands.registerCommand('riscv-register.toggleShowChanged', () => {
       registerProvider.toggleShowChangedOnly();
+    }),
+
+    // 循环切换显示进制: 十进制 → 十六进制 → 二进制
+    vscode.commands.registerCommand('riscv-register.cycleDisplayBase', () => {
+      registerProvider.cycleDisplayBase();
     })
   ];
   

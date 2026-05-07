@@ -37,6 +37,12 @@
           "type": "boolean",
           "default": false,
           "description": "是否在保存文件时自动重置寄存器视图"
+        },
+        "asmRegisterViewer.displayBase": {
+          "type": "string",
+          "enum": ["dec", "hex", "bin"],
+          "default": "dec",
+          "description": "寄存器值的显示进制 (dec=十进制, hex=十六进制, bin=二进制)"
         }
       }
     },
@@ -57,6 +63,10 @@
       {
         "command": "riscv-register.toggleShowChanged",
         "title": "Toggle Show Changed Only"
+      },
+      {
+        "command": "riscv-register.cycleDisplayBase",
+        "title": "Cycle Display Base (Dec/Hex/Bin)"
       }
     ],
 
@@ -95,6 +105,11 @@
       "view/title": [
         {
           "command": "asmRegisterViewer.reset",
+          "when": "view == asmRegisterViewer",
+          "group": "navigation"
+        },
+        {
+          "command": "riscv-register.cycleDisplayBase",
           "when": "view == asmRegisterViewer",
           "group": "navigation"
         }

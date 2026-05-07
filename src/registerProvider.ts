@@ -7,12 +7,13 @@ export class RegisterItem extends vscode.TreeItem {
 
 	constructor (
 		public readonly label: string,
-		public readonly collapsibleState: vscode.TreeItemCollapsibleState,	
-		public readonly register?: RegisterState
+		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+		public readonly register?: RegisterState,
+		displayBase?: string
 	) {
 		super(label, collapsibleState);
 		if (register) {
-			this.description = register.currentValue;
+			this.description = RegisterItem.formatValue(register.currentValue, displayBase || 'dec');
 			this.tooltip = this.getTooltip();
 
 			if (register.changed) {
@@ -23,13 +24,31 @@ export class RegisterItem extends vscode.TreeItem {
 		}
 	}
 
-	
+	static formatValue(rawValue: string, base: string): string {
+		let n: bigint;
+		try {
+			n = BigInt(rawValue);
+		} catch {
+			return rawValue;
+		}
+		switch (base) {
+			case 'hex':
+				return '0x' + n.toString(16);
+			case 'bin':
+				return '0b' + n.toString(2);
+			case 'dec':
+			default:
+				return n.toString(10);
+		}
+	}
+
+
 	private getTooltip(): string {
 		if (!this.register) {
 			return this.label;
 		}
 		return `Name: ${this.register.name}\n` +
-			`Value: ${this.register.currentValue}\n` +
+			`Value(hex): ${this.register.currentValue}\n` +
 			`Type: ${this.register.type}\n` +
 			`Bits: ${this.register.bits}\n` +
 			`Changed: ${this.register.changed}`;
@@ -60,6 +79,14 @@ export class RegisterProvider implements vscode.TreeDataProvider<RegisterItem> {
 		this.refresh();
 	}
 
+	cycleDisplayBase(): void {
+		const config = vscode.workspace.getConfiguration('asmRegisterViewer');
+		const current = config.get<string>('displayBase', 'dec');
+		const next: Record<string, string> = { 'dec': 'hex', 'hex': 'bin', 'bin': 'dec' };
+		config.update('displayBase', next[current] || 'dec', true);
+		this.refresh();
+	}
+
 	resetRegisters(): void {
 		this.parser.reset();
 		this.refresh();
@@ -85,6 +112,9 @@ export class RegisterProvider implements vscode.TreeDataProvider<RegisterItem> {
 	}
 
 	private getAllRegistersNodes(): RegisterItem[] {
+		const config = vscode.workspace.getConfiguration('asmRegisterViewer');
+		const displayBase = config.get<string>('displayBase', 'dec');
+
 		const registers = Array.from(this.parser.getRegisterStates().values());
 		const items: RegisterItem[] = [];
 
@@ -101,7 +131,8 @@ export class RegisterProvider implements vscode.TreeDataProvider<RegisterItem> {
 				items.push(new RegisterItem(
 					label,
 					vscode.TreeItemCollapsibleState.None,
-					reg
+					reg,
+					displayBase
 				));
 			});
 		});
@@ -130,4 +161,3 @@ export class RegisterProvider implements vscode.TreeDataProvider<RegisterItem> {
 }
 
 
-		
