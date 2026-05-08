@@ -1,0 +1,307 @@
+{
+  "function_prologue": {
+    "prefix": "func",
+    "body": [
+      "${1:label}:",
+      "\taddi\tsp, sp, -${2:16}",
+      "\tsd\tra, ${3:8}(sp)",
+      "$0"
+    ],
+    "description": "RISC-V function prologue (save ra, allocate stack)"
+  },
+
+  "function_epilogue": {
+    "prefix": "ret",
+    "body": [
+      "\tld\tra, ${1:8}(sp)",
+      "\taddi\tsp, sp, ${2:16}",
+      "\tret"
+    ],
+    "description": "RISC-V function epilogue (restore ra, deallocate stack)"
+  },
+
+  "main_template": {
+    "prefix": "main",
+    "body": [
+      "\t.text",
+      "\t.globl\tmain",
+      "main:",
+      "\taddi\tsp, sp, -16",
+      "\tsd\tra, 8(sp)",
+      "\t${0:# body}",
+      "\tld\tra, 8(sp)",
+      "\taddi\tsp, sp, 16",
+      "\tli\ta7, 93",
+      "\tli\ta0, 0",
+      "\tecall"
+    ],
+    "description": "RISC-V main function template"
+  },
+
+  "loop": {
+    "prefix": "loop",
+    "body": [
+      "\tli\t${1:t0}, ${2:0}",
+      "${3:loop}:",
+      "\t${0:# loop body}",
+      "\taddi\t${1:t0}, ${1:t0}, 1",
+      "\tli\t${4:t1}, ${5:10}",
+      "\tblt\t${1:t0}, ${4:t1}, ${3:loop}"
+    ],
+    "description": "RISC-V counted loop structure"
+  },
+
+  "infinite_loop": {
+    "prefix": "infloop",
+    "body": [
+      "${1:loop}:",
+      "\t${0:# body}",
+      "\tj\t${1:loop}"
+    ],
+    "description": "RISC-V infinite loop"
+  },
+
+  "while_loop": {
+    "prefix": "while",
+    "body": [
+      "\tj\t${1:cond}",
+      "${2:body}:",
+      "\t${0:# loop body}",
+      "${1:cond}:",
+      "\t${3:beq}\t${4:rs1}, ${5:rs2}, ${2:body}"
+    ],
+    "description": "RISC-V while loop structure"
+  },
+
+  "if_statement": {
+    "prefix": "if",
+    "body": [
+      "\t${1:beq}\t${2:a0}, ${3:a1}, ${4:endif}",
+      "\t${0:# condition body}",
+      "${4:endif}:"
+    ],
+    "description": "RISC-V conditional branch (if statement)"
+  },
+
+  "if_else": {
+    "prefix": "ifelse",
+    "body": [
+      "\t${1:beq}\t${2:a0}, ${3:a1}, ${4:else}",
+      "\t${5:# if body}",
+      "\tj\t${6:endif}",
+      "${4:else}:",
+      "\t${7:# else body}",
+      "${6:endif}:"
+    ],
+    "description": "RISC-V if-else branch structure"
+  },
+
+  "switch_case": {
+    "prefix": "switch",
+    "body": [
+      "\tli\t${1:t0}, ${2:0}",
+      "\tbeq\t${3:a0}, ${1:t0}, ${4:case0}",
+      "\tli\t${1:t0}, ${5:1}",
+      "\tbeq\t${3:a0}, ${1:t0}, ${6:case1}",
+      "\tj\t${7:default}",
+      "${4:case0}:",
+      "\t${8:# case 0 body}",
+      "\tj\t${9:endswitch}",
+      "${6:case1}:",
+      "\t${10:# case 1 body}",
+      "\tj\t${9:endswitch}",
+      "${7:default}:",
+      "\t${11:# default body}",
+      "${9:endswitch}:"
+    ],
+    "description": "RISC-V switch-case structure (2 cases + default)"
+  },
+
+  "ecall_exit": {
+    "prefix": "exit",
+    "body": [
+      "\tli\ta7, 93",
+      "\tli\ta0, ${1:0}",
+      "\tecall"
+    ],
+    "description": "RISC-V exit system call (riscv-pk)"
+  },
+
+  "ecall_print_string": {
+    "prefix": "print",
+    "body": [
+      "\t.data",
+      "${1:str}: .asciz \"${2:Hello, World!}\"",
+      "\t.text",
+      "\tla\ta0, ${1:str}",
+      "\tli\ta7, 64",
+      "\tecall"
+    ],
+    "description": "RISC-V print string via ecall"
+  },
+
+  "ecall_read_int": {
+    "prefix": "readint",
+    "body": [
+      "\tli\ta7, 5",
+      "\tecall",
+      "\tmv\t${1:t0}, a0"
+    ],
+    "description": "RISC-V read integer via ecall (returns value in a0)"
+  },
+
+  "ecall_print_int": {
+    "prefix": "printint",
+    "body": [
+      "\tli\ta7, 1",
+      "\tli\ta0, ${1:42}",
+      "\tecall"
+    ],
+    "description": "RISC-V print integer via ecall"
+  },
+
+  "ecall_sbrk": {
+    "prefix": "sbrk",
+    "body": [
+      "\tli\ta7, 9",
+      "\tli\ta0, ${1:4096}",
+      "\tecall"
+    ],
+    "description": "RISC-V sbrk (allocate heap memory)"
+  },
+
+  "array_access_word": {
+    "prefix": "array",
+    "body": [
+      "\tla\t${1:t0}, ${2:array}",
+      "\tli\t${3:t1}, ${4:index}",
+      "\tslli\t${3:t1}, ${3:t1}, 2",
+      "\tadd\t${1:t0}, ${1:t0}, ${3:t1}",
+      "\tlw\t${5:t2}, 0(${1:t0})"
+    ],
+    "description": "RISC-V word array element access (4-byte elements)"
+  },
+
+  "array_access_byte": {
+    "prefix": "arrayb",
+    "body": [
+      "\tla\t${1:t0}, ${2:array}",
+      "\tli\t${3:t1}, ${4:index}",
+      "\tadd\t${1:t0}, ${1:t0}, ${3:t1}",
+      "\tlb\t${5:t2}, 0(${1:t0})"
+    ],
+    "description": "RISC-V byte array element access"
+  },
+
+  "string_copy": {
+    "prefix": "strcpy",
+    "body": [
+      "\tla\t${1:t0}, ${2:src}",
+      "\tla\t${3:t1}, ${4:dst}",
+      "${5:loop}:",
+      "\tlb\t${6:t2}, 0(${1:t0})",
+      "\tsb\t${6:t2}, 0(${3:t1})",
+      "\tbeqz\t${6:t2}, ${7:done}",
+      "\taddi\t${1:t0}, ${1:t0}, 1",
+      "\taddi\t${3:t1}, ${3:t1}, 1",
+      "\tj\t${5:loop}",
+      "${7:done}:"
+    ],
+    "description": "RISC-V string copy (src → dst)"
+  },
+
+  "stack_frame_full": {
+    "prefix": "frame",
+    "body": [
+      "\taddi\tsp, sp, -${1:32}",
+      "\tsd\tra, ${2:24}(sp)",
+      "\tsd\ts0, ${3:16}(sp)",
+      "\tsd\t${4:s1}, ${5:8}(sp)",
+      "\taddi\ts0, sp, ${1:32}",
+      "$0",
+      "\tld\t${4:s1}, ${5:8}(sp)",
+      "\tld\ts0, ${3:16}(sp)",
+      "\tld\tra, ${2:24}(sp)",
+      "\taddi\tsp, sp, ${1:32}",
+      "\tret"
+    ],
+    "description": "RISC-V full stack frame with saved registers"
+  },
+
+  "section_text": {
+    "prefix": "text",
+    "body": [
+      "\t.text",
+      "\t${0:# code}"
+    ],
+    "description": "RISC-V text section"
+  },
+
+  "section_data": {
+    "prefix": "data",
+    "body": [
+      "\t.data",
+      "\t${0:# data}"
+    ],
+    "description": "RISC-V data section"
+  },
+
+  "section_bss": {
+    "prefix": "bss",
+    "body": [
+      "\t.bss",
+      "\t${0:# uninitialized data}"
+    ],
+    "description": "RISC-V BSS section"
+  },
+
+  "section_rodata": {
+    "prefix": "rodata",
+    "body": [
+      "\t.section\t.rodata",
+      "${1:label}: .asciz \"${2:read-only string}\""
+    ],
+    "description": "RISC-V read-only data section"
+  },
+
+  "global_label": {
+    "prefix": "global",
+    "body": [
+      "\t.globl\t${1:label}",
+      "${1:label}:"
+    ],
+    "description": "RISC-V global label declaration"
+  },
+
+  "equ_constant": {
+    "prefix": "equ",
+    "body": [
+      "\t.equ\t${1:NAME}, ${2:value}"
+    ],
+    "description": "RISC-V .equ constant definition"
+  },
+
+  "asciz_string": {
+    "prefix": "asciz",
+    "body": [
+      "${1:label}: .asciz \"${2:string}\""
+    ],
+    "description": "RISC-V null-terminated string definition"
+  },
+
+  "word_data": {
+    "prefix": "word",
+    "body": [
+      "${1:label}: .word\t${2:0x12345678}"
+    ],
+    "description": "RISC-V word (4-byte) data definition"
+  },
+
+  "byte_data": {
+    "prefix": "byte",
+    "body": [
+      "${1:label}: .byte\t${2:0x00, 0x01, 0x02}"
+    ],
+    "description": "RISC-V byte data definition"
+  }
+}

@@ -43,6 +43,11 @@
           "enum": ["dec", "hex", "bin"],
           "default": "dec",
           "description": "寄存器值的显示进制 (dec=十进制, hex=十六进制, bin=二进制)"
+        },
+        "asmRegisterViewer.enableSnippets": {
+          "type": "boolean",
+          "default": true,
+          "description": "是否启用代码片段提示功能"
         }
       }
     },
@@ -91,6 +96,13 @@
         "language": "riscv-assembly",
         "scopeName": "source.riscv",
         "path": "./syntaxes/riscv-assembly.tmLanguage.json"
+      }
+    ],
+
+    "snippets": [
+      {
+        "language": "riscv-assembly",
+        "path": "./snippets/riscv-assembly.json"
       }
     ],
 
